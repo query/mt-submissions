@@ -1,0 +1,101 @@
+\documentclass[11pt,twocolumn]{article}
+\usepackage{inconsolata}
+\usepackage{helvet}
+\usepackage[bitstream-charter]{mathdesign}
+\usepackage{microtype}
+\usepackage{titling}
+
+\setlength{\droptitle}{-1in}
+\posttitle{\par\end{center}}
+
+\begin{document}
+\title{Homework 1: Alignment}
+\author{Roger Que}
+\date{2014--02--18}
+\maketitle
+
+This aligner is a Python implementation of \textsc{ibm} Model 2
+\cite{Brown:1993}.
+It independently trains two models, one in the ``forward'' direction
+from source to target, and the other in the ``reverse'' direction from
+target to source, through five iterations of \textsc{em}.
+It then uses both models to align each sentence pair, according to the
+most probable decoding of each individual word, and returns only those
+alignments that appear in both decodings.
+This intersection process reduces the probability that rare source words
+will become ``garbage collectors'' that align to too many words in the
+target language because there is not enough evidence to minimize the
+probability of superfluous alignments \cite{Moore:2004, Liang:2006}.
+Testing shows that intersection trades recall for a significant increase
+in precision, improving overall \textsc{aer}.
+
+I also implemented a version of \cite{Dyer:2013}, which reparameterizes
+Model 2 by adding a diagonal alignment prior.
+This method has the advantage of assigning better position probabilities
+than Model 1, which assumes a uniform distribution, while not requiring
+\textsc{em} over another set of parameters as Model 2 does.
+Due to time constraints, instead of learning the precision parameter
+$\lambda$ by gradient descent as outlined in the original paper, this
+implementation used a constant $\lambda$ throughout \textsc{em}.
+The value was selected by training on the first 1000 sentences of the
+data set with $\lambda\in\{1,2,3,4,5\}$, and choosing the value that
+resulted in the lowest \textsc{aer}.
+In the case of ``forward''-only alignment, this method gave an optimal
+$\lambda$ value of 2; with intersection, 1.
+In both cases, while my implementation showed an improvement in
+\textsc{aer} over Model 1, against Model 2 it fared somewhat worse.
+As a result, the submitted aligner uses Model 2.
+
+\begin{table}
+\center
+\begin{tabular}{lrrr}
+\textbf{Model} &
+\textbf{\textsc{aer}} & \textbf{Pre} & \textbf{Rec} \\
+\hline
+Model 1 &
+0.37 & 0.57 & 0.74 \\
+\cite{Dyer:2013}, $\lambda=2$ &
+0.33 & 0.63 & 0.77 \\
+\cite{Dyer:2013}, $\lambda=1$, intersection &
+0.29 & 0.84 & 0.57 \\
+Model 2 &
+0.28 & 0.67 & \textbf{0.81} \\
+Model 2, intersection &
+\textbf{0.18} & \textbf{0.89} & 0.74
+\end{tabular}
+\caption{Alignment performance, as measured by \textsc{aer}, precision,
+and recall, for the algorithms implemented.}
+\end{table}
+
+\begin{thebibliography}{1}
+
+\bibitem{Brown:1993}
+Peter~F. Brown, Vincent~J. Della~Pietra, Stephen~A. Della~Pietra, and Robert~L.
+  Mercer.
+\newblock The mathematics of statistical machine translation: Parameter
+  estimation.
+\newblock {\em Computational linguistics}, 19(2):263--311, 1993.
+
+\bibitem{Dyer:2013}
+Chris Dyer, Victor Chahuneau, and Noah~A. Smith.
+\newblock A simple, fast, and effective reparameterization of {IBM Model 2}.
+\newblock In {\em Proceedings of NAACL-HLT}, pages 644--648, 2013.
+
+\bibitem{Liang:2006}
+Percy Liang, Ben Taskar, and Dan Klein.
+\newblock Alignment by agreement.
+\newblock In {\em Proceedings of the main conference on Human Language
+  Technology Conference of the North American Chapter of the Association of
+  Computational Linguistics}, pages 104--111. Association for Computational
+  Linguistics, 2006.
+
+\bibitem{Moore:2004}
+Robert~C. Moore.
+\newblock Improving {IBM} word-alignment model 1.
+\newblock In {\em Proceedings of the 42nd Annual Meeting on {Association for
+  Computational Linguistics}}, page 518. Association for Computational
+  Linguistics, 2004.
+
+\end{thebibliography}
+
+\end{document}
