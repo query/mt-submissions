@@ -1,0 +1,193 @@
+\documentclass[11pt,twocolumn]{article}
+\usepackage{inconsolata}
+\usepackage{helvet}
+\usepackage[bitstream-charter]{mathdesign}
+\usepackage{microtype}
+\usepackage{titling}
+
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{rotating}
+
+\setlength{\droptitle}{-1in}
+\posttitle{\par\end{center}}
+
+\begin{document}
+\title{Homework 2: Decoding}
+\author{Roger Que}
+\date{2014--03--06}
+\maketitle
+
+This submission implements a phrase-based stack decoder in Python.
+It supports arbitrary reordering of source phrases, with an optional
+limit set by the user on how many words of the source sentence may be
+skipped at any given point.
+Hypotheses are divided into stacks by the number of completed words,
+and future costs are estimated based on the translation and language
+model scores of each span \cite{Koehn:2010}.
+Histogram pruning is used to only extend a constant number of the best
+hypotheses in each stack.
+Hypotheses that share the same language model state (i.e., end with the
+same target language 3-gram) are combined, with the hypothesis with the
+higher probability taking precedence.
+
+One quirk of the future cost implementation is that it only takes these
+costs into account for hypothesis recombination, and not at the pruning
+step.
+Although this is not justified theoretically, this empirically gave
+better model scores than when future costs were also taken into account
+during pruning, as shown in Table~\ref{tab:future-cost}.
+This may be explained by the fact that combination of adjacent segment
+scores in the initial computation of future costs is performed by simply
+taking their sum.
+In turn, this causes consistent overestimation of the language model
+score, as the probabilities of $n$-grams that overlap the boundary
+between the two segments are never computed.
+Only hypotheses with the same terminating \textsc{lm} state compete
+against each other in recombination,
+while pruning compares all hypotheses with the same number of completed
+words,
+and thus this inaccuracy would more heavily affect the latter process.
+In any case, both implementations of future cost estimation give
+decodings with better model score than performing no estimation at all.
+
+The effects of the decoder's translation table and stack size limits are
+summarized in Table~\ref{tab:scores}.
+As intuitively expected, larger stack sizes always yield equal or better
+model scores, as fewer hypotheses are pruned.
+However, increasing the number of translations per phrase gives mixed
+results.
+Although there is an obvious benefit to considering 10 translations over
+just a single one, further bumping the number to 100 actually causes
+performance to decrease in some cases.
+This indicates that some low-probability translations lead to hypotheses
+that appear better for some prefix of a sentence, but end up having a
+worse score overall.
+
+Changing the reordering limit has results similar to changing the stack
+size, as shown in Figure~\ref{fig:reordering}.
+Although increasing the limit causes a corresponding increase in model
+score up to 4 words,
+further increases have a negative impact as the decoder tends towards
+simply outputting all of the high-probability segments first.
+
+\begin{table}
+\center
+\begin{tabular}{lr}
+\textbf{Future costs used\ldots} & \textbf{Log-prob.} \\
+\hline
+Nowhere & --1341.18 \\
+In recombination & \textbf{--1289.35} \\
+In recombination \& pruning & --1316.51
+\end{tabular}
+\caption{\label{tab:future-cost}
+Effects of future cost prediction on corpus log-probability, for
+number of translations per phrase $k=100$, stack size limit $s=200$,
+and reordering limit $r=3$.}
+\end{table}
+
+\begin{table}
+\center
+\begin{tabular}{crrrr}
+& & \multicolumn{3}{c}{\textbf{Translations per phrase}} \\
+& & \textbf{1} & \textbf{10} & \textbf{100} \\
+\hline
+\multirow{5}{*}{\begin{sideways}\textbf{Stack size}\end{sideways}}
+& \textbf{1}   & --1700.33 & --1646.97 & --1646.91 \\
+& \textbf{25}  & --1369.91 & --1310.66 & --1320.42 \\
+& \textbf{50}  & --1369.91 & --1298.37 & --1302.51 \\
+& \textbf{100} & --1369.91 & --1291.52 & --1296.66 \\
+& \textbf{200} & --1369.91 & --1290.17 & \textbf{--1289.35} \\
+\end{tabular}
+\caption{\label{tab:scores}
+Corpus log-probability of decodings given various limits on the number
+of translations per phrase $k$ and the stack size $s$, with the
+reordering limit $r=3$.}
+\end{table}
+
+\begin{figure}
+\setlength{\unitlength}{0.240900pt}
+\ifx\plotpoint\undefined\newsavebox{\plotpoint}\fi
+\begin{picture}(900,600)(0,0)
+\sbox{\plotpoint}{\rule[-0.200pt]{0.400pt}{0.400pt}}%
+\put(191,559){\makebox(0,0)[r]{--1240}}
+\put(211.0,506.0){\rule[-0.200pt]{4.818pt}{0.400pt}}
+\put(191,506){\makebox(0,0)[r]{--1260}}
+\put(819.0,506.0){\rule[-0.200pt]{4.818pt}{0.400pt}}
+\put(211.0,452.0){\rule[-0.200pt]{4.818pt}{0.400pt}}
+\put(191,452){\makebox(0,0)[r]{--1280}}
+\put(819.0,452.0){\rule[-0.200pt]{4.818pt}{0.400pt}}
+\put(211.0,399.0){\rule[-0.200pt]{4.818pt}{0.400pt}}
+\put(191,399){\makebox(0,0)[r]{--1300}}
+\put(819.0,399.0){\rule[-0.200pt]{4.818pt}{0.400pt}}
+\put(211.0,345.0){\rule[-0.200pt]{4.818pt}{0.400pt}}
+\put(191,345){\makebox(0,0)[r]{--1320}}
+\put(819.0,345.0){\rule[-0.200pt]{4.818pt}{0.400pt}}
+\put(211.0,292.0){\rule[-0.200pt]{4.818pt}{0.400pt}}
+\put(191,292){\makebox(0,0)[r]{--1340}}
+\put(819.0,292.0){\rule[-0.200pt]{4.818pt}{0.400pt}}
+\put(211.0,238.0){\rule[-0.200pt]{4.818pt}{0.400pt}}
+\put(191,238){\makebox(0,0)[r]{--1360}}
+\put(819.0,238.0){\rule[-0.200pt]{4.818pt}{0.400pt}}
+\put(211.0,185.0){\rule[-0.200pt]{4.818pt}{0.400pt}}
+\put(191,185){\makebox(0,0)[r]{--1380}}
+\put(819.0,185.0){\rule[-0.200pt]{4.818pt}{0.400pt}}
+\put(191,131){\makebox(0,0)[r]{--1400}}
+\put(281.0,131.0){\rule[-0.200pt]{0.400pt}{4.818pt}}
+\put(281,90){\makebox(0,0){ 1}}
+\put(281.0,539.0){\rule[-0.200pt]{0.400pt}{4.818pt}}
+\put(351.0,131.0){\rule[-0.200pt]{0.400pt}{4.818pt}}
+\put(351,90){\makebox(0,0){ 2}}
+\put(351.0,539.0){\rule[-0.200pt]{0.400pt}{4.818pt}}
+\put(420.0,131.0){\rule[-0.200pt]{0.400pt}{4.818pt}}
+\put(420,90){\makebox(0,0){ 3}}
+\put(420.0,539.0){\rule[-0.200pt]{0.400pt}{4.818pt}}
+\put(490.0,131.0){\rule[-0.200pt]{0.400pt}{4.818pt}}
+\put(490,90){\makebox(0,0){ 4}}
+\put(490.0,539.0){\rule[-0.200pt]{0.400pt}{4.818pt}}
+\put(560.0,131.0){\rule[-0.200pt]{0.400pt}{4.818pt}}
+\put(560,90){\makebox(0,0){ 5}}
+\put(560.0,539.0){\rule[-0.200pt]{0.400pt}{4.818pt}}
+\put(630.0,131.0){\rule[-0.200pt]{0.400pt}{4.818pt}}
+\put(630,90){\makebox(0,0){ 6}}
+\put(630.0,539.0){\rule[-0.200pt]{0.400pt}{4.818pt}}
+\put(699.0,131.0){\rule[-0.200pt]{0.400pt}{4.818pt}}
+\put(699,90){\makebox(0,0){ 7}}
+\put(699.0,539.0){\rule[-0.200pt]{0.400pt}{4.818pt}}
+\put(769.0,131.0){\rule[-0.200pt]{0.400pt}{4.818pt}}
+\put(769,90){\makebox(0,0){ 8}}
+\put(769.0,539.0){\rule[-0.200pt]{0.400pt}{4.818pt}}
+\put(211.0,131.0){\rule[-0.200pt]{0.400pt}{103.105pt}}
+\put(211.0,131.0){\rule[-0.200pt]{151.285pt}{0.400pt}}
+\put(839.0,131.0){\rule[-0.200pt]{0.400pt}{103.105pt}}
+\put(211.0,559.0){\rule[-0.200pt]{151.285pt}{0.400pt}}
+\put(30,345){\rotatebox{-270}{\makebox(0,0){\textbf{Corpus log-probability}}}
+}\put(525,29){\makebox(0,0){\textbf{Reordering limit}}}
+\put(281,256){\makebox(0,0){$+$}}
+\put(351,369){\makebox(0,0){$+$}}
+\put(420,427){\makebox(0,0){$+$}}
+\put(490,469){\makebox(0,0){$+$}}
+\put(560,464){\makebox(0,0){$+$}}
+\put(630,464){\makebox(0,0){$+$}}
+\put(699,440){\makebox(0,0){$+$}}
+\put(769,443){\makebox(0,0){$+$}}
+\put(211.0,131.0){\rule[-0.200pt]{0.400pt}{103.105pt}}
+\put(211.0,131.0){\rule[-0.200pt]{151.285pt}{0.400pt}}
+\put(839.0,131.0){\rule[-0.200pt]{0.400pt}{103.105pt}}
+\put(211.0,559.0){\rule[-0.200pt]{151.285pt}{0.400pt}}
+\end{picture}
+\caption{\label{fig:reordering}
+Effects of the reordering limit $r$ on corpus log-probability, with
+$k=100$ and $s=200$.}
+\end{figure}
+
+\begin{thebibliography}{1}
+
+\bibitem{Koehn:2010}
+Philipp Koehn.
+\newblock {\em Statistical machine translation}.
+\newblock Cambridge University Press, 2010.
+
+\end{thebibliography}
+
+\end{document}
