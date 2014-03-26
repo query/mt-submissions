@@ -11,7 +11,8 @@ try:
 except ImportError:
     from StringIO import StringIO
 
-from numpy import array
+from numpy import arange, array
+from sklearn.grid_search import GridSearchCV
 from sklearn.svm import SVC
 from textblob import TextBlob
 
@@ -127,11 +128,12 @@ def load_labels(label_file):
     return array([int(label_line) for label_line in label_file])
 
 
-def classify(features, labels, C=1.0):
+def classify(features, labels, folds=5):
     """Perform supervised classification of the sentences described by
     *features* using the provided *labels*, and return a NumPy array
     with the classifier's predictions."""
-    clf = SVC(C=C)
+    clf = GridSearchCV(SVC(), {'C': 10.0 ** arange(-2, 4)},
+                       cv=folds, n_jobs=-1)
     clf.fit(features[:labels.shape[0]], labels)
     return clf.predict(features)
 
@@ -139,7 +141,8 @@ def classify(features, labels, C=1.0):
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        description='An evaluator for translation hypotheses.')
+        description='An evaluator for translation hypotheses.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         'hypothesis_file', metavar='HYPOTHESES', type=argparse.FileType('r'),
         help='path to file containing hypotheses')
@@ -147,11 +150,11 @@ def main():
         'label_file', metavar='LABELS', type=argparse.FileType('r'),
         help='path to file containing labels')
     parser.add_argument(
-        '-c', metavar='C', type=float, default=1.0,
-        help='value to use for C in SVM training')
+        '-f', '--folds', metavar='F', type=int, default=5,
+        help='number of folds to use for cross-validation')
     parser.add_argument(
         '-n', '--max-ngram-length', metavar='N', type=int, default=1,
-        help='consider n-grams up to length N for features (default: 1)')
+        help='consider n-grams up to length N for features')
     parser.add_argument(
         '-p', '--pos-tagging', action='store_true',
         help='add combined word/POS n-gram features')
@@ -165,7 +168,7 @@ def main():
                                 pos_tagging=args.pos_tagging,
                                 strip_punctuation=args.strip_punctuation)
     labels = load_labels(args.label_file)
-    predictions = classify(features, labels, C=args.c)
+    predictions = classify(features, labels)
     for prediction in predictions:
         print prediction
 
