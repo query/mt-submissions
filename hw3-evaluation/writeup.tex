@@ -1,0 +1,148 @@
+\documentclass[11pt,twocolumn]{article}
+\usepackage{inconsolata}
+\usepackage{helvet}
+\usepackage[bitstream-charter]{mathdesign}
+\usepackage{microtype}
+\usepackage{titling}
+
+\usepackage{enumitem}
+
+\setlength{\droptitle}{-1in}
+\posttitle{\par\end{center}}
+
+\begin{document}
+\title{Homework 3: Evaluation}
+\author{Roger Que}
+\date{2014--03--27}
+\maketitle
+
+This submission implements an \textsc{svm}-based pairwise evaluator that
+ranks hypotheses according to three primary classes of features, or some
+subset thereof:
+\begin{itemize}[noitemsep]
+\item  word count;
+\item  $n$-gram precision, recall, and $F_1$ score; and
+\item  the compressibility of a document containing both the hypothesis
+       and its corresponding reference.
+\end{itemize}
+In order to expand the usually binary classification of an \textsc{svm}
+to cover all of the possible results of the ranking function
+$f(h_1,h_2,e)\in\{-1,0,1\}$, the evaluator uses the default
+``one-against-one'' strategy of the underlying scikit-learn library
+\cite{scikit-learn}.
+A binary \textsc{svm} is trained on each pair of labels.
+These results are then combined in order to produce a final label for
+each pair of hypotheses.
+
+The word count and $n$-gram features were taken from the \textsc{rose}
+classifier, which also uses an \textsc{svm} to score hypotheses
+\cite{Song:2011}.\footnote{
+    The evaluator also implements a form of \textsc{rose}'s ``mixed''
+    $n$-gram feature, which combines the text string and part of speech
+    for each word.
+    However, due to a coding oversight, a ``hit'' requires that both
+    the string and \textsc{pos} match, unlike \textsc{rose}, which only
+    requires one of the two to match.
+    Thus this feature is not considered elsewhere in this writeup.
+}
+
+The last metric of compressibility is motivated by the information
+theoretic notion that the more similar two strings are, the smaller a
+compressed text containing both of them should be, controlling for each
+string's length \cite{Dobrinkat:2010}.
+This is because repeated substrings can be represented just once in
+the compressed text.
+For this feature, each hypothesis and its corresponding reference were
+concatenated together, then compressed using the gzip algorithm.
+The compressed lengths were then used as feature values.
+
+After the computation of feature values, the \textsc{svm} hyperparameter
+$C$ was selected from the values $\{10^{-2},\ldots,10^3\}$ using 5-fold
+cross-validation.
+In virtually all cases, this process yielded the value $C=1$, indicating
+a balance between fitting to the training data (high $C$) and simplicity
+of the decision surface (low $C$).
+
+\begin{table}
+\center
+\begin{tabular}{lrr}\\
+\textbf{Method} &
+\textbf{Train} &
+\textbf{Test} \\
+\hline
+\hline
+No $n$-gram features        & 79 & 49 \\
+Up to 1-grams               & 70 & 51 \\
+Up to 2-grams               & 66 & 51 \\
+Up to 3-grams               & 64 & 52 \\
+Up to 4-grams               & 62 & 52 \\
+\hline
+No word count features      & 57 & \textbf{53} \\
+\hline
+No $n$-grams, $C=10^{-1}$   & 47 & 46 \\
+No $n$-grams, $C=10^0$      & 79 & 49 \\
+No $n$-grams, $C=10^1$      & 87 & 46 \\
+No $n$-grams, $C=10^2$      & \textbf{88} & 46 \\
+\hline
+Simple \textsc{meteor}      & 51 & --- \\
+Simple gzip size            & 50 & ---
+\end{tabular}
+\caption{\label{tab:accuracy}
+Percentage of correct rankings on training and testing data for various
+evaluation methods.
+The ``simple'' methods at the bottom of the table use pairwise ranking
+based on score comparisons instead of classification.
+The best percentage for each data set is highlighted in bold.}
+\end{table}
+
+A comparison of the accuracy of various classification methods on
+training and testing data is shown in Table~\ref{tab:accuracy}.
+As expected, high values of $C$ yield the best fit to the training
+data, but negatively impact accuracy on testing data.
+Surprisingly, the addition of higher-order $n$-gram features has
+opposite effects between training and testing data.
+This is likely due to the lack of features causing overfitting on the
+remaining word count and compressibility information.
+
+Classification without the word count feature yielded the best score on
+testing data, in spite of middling performance on the training set.
+This may be evidence of the impact on accuracy caused by the evaluator's
+failure to normalize the word count and compressed byte size features at
+training time.
+In the former case, this means that the word count features do not take
+the relative length of the reference into account,
+while in the latter, the feature vectors draw no distinction between
+sentences that are highly similar, and sentences that are simply
+shorter to begin with.
+An improved classifier should normalize these factors against the
+reference for each sentence, making the values more directly comparable
+across sentences.
+
+\begin{thebibliography}{1}
+
+\bibitem{Dobrinkat:2010}
+Marcus Dobrinkat, Jaakko V{\"a}yrynen, Tero Tapiovaara, and Kimmo Kettunen.
+\newblock Normalized compression distance based measures for {MetricsMATR}
+  2010.
+\newblock In {\em Proceedings of the joint fifth workshop on statistical
+  machine translation and {MetricsMATR}}, pages 343--348. Association for
+  Computational Linguistics, 2010.
+
+\bibitem{scikit-learn}
+F.~Pedregosa, G.~Varoquaux, A.~Gramfort, V.~Michel, B.~Thirion, O.~Grisel,
+  M.~Blondel, P.~Prettenhofer, R.~Weiss, V.~Dubourg, J.~Vanderplas, A.~Passos,
+  D.~Cournapeau, M.~Brucher, M.~Perrot, and E.~Duchesnay.
+\newblock Scikit-learn: Machine learning in {Python}.
+\newblock {\em Journal of Machine Learning Research}, 12:2825--2830, 2011.
+
+\bibitem{Song:2011}
+Xingyi Song and Trevor Cohn.
+\newblock Regression and ranking based optimisation for sentence level mt
+  evaluation.
+\newblock In {\em Proceedings of the Sixth Workshop on Statistical Machine
+  Translation}, pages 123--129, Edinburgh, Scotland, July 2011. Association for
+  Computational Linguistics.
+
+\end{thebibliography}
+
+\end{document}
