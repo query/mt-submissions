@@ -1,0 +1,131 @@
+\documentclass[11pt,twocolumn]{article}
+\usepackage{inconsolata}
+\usepackage{helvet}
+\usepackage[bitstream-charter]{mathdesign}
+\usepackage{microtype}
+\usepackage{titling}
+
+\usepackage{hyperref}
+
+\setlength{\droptitle}{-1in}
+\posttitle{\par\end{center}}
+
+\begin{document}
+\title{Homework 4: Reranking}
+\author{Roger Que}
+\date{2014--04--17}
+\maketitle
+
+This reranker is a simple implementation of the \textsc{pro} pairwise
+ranking classification method \cite{Hopkins:2011}.
+For each source sentence in the training data, it computes a
+sentence-wise \textsc{bleu} score for each candidate hypothesis against
+the reference sentence.
+It then samples pairs of hypotheses to build a relative ranking table
+according to these scores, and uses these samples to train a linear
+\textsc{svm}.
+Optimization of the classifier's hyperparameter $C$ is performed by
+5-fold cross-validation.
+Finally, to select the best hypothesis for each sentence in the testing
+data, the reranker computes the dot product of the \textsc{svm}'s weight
+vector and each hypothesis' feature vector to derive a score.
+
+Features for each hypothesis include:
+\begin{itemize}
+\item
+The translation and language model probabilities provided in the
+hypothesis data files.
+
+\item
+The word count (excluding punctuation) and number of verbs in each
+hypothesis, as counted by the TextBlob library \cite{TextBlob}.
+The latter feature captures the intuition that translations with poor
+fluency may not have any verbs at all, and should be appropriately
+penalized.
+
+\item
+The number of words (again, excluding punctuation) that appear to have
+been left untranslated in the target sentence, computed by taking the
+cardinality of the intersection of the multisets of words in the source
+and target sentence.
+This simple implementation takes advantage of the fact that Russian and
+English, the two languages used in our data, use different scripts and
+thus should have near-zero word overlap.
+\end{itemize}
+
+The pairwise sampling algorithm used in \textsc{pro} has two parameters,
+which are referred to as $\Gamma$ and $\Xi$.
+For each source sentence, $\Gamma$ pairwise samples are taken from the
+corresponding hypothesis set.
+Pairs with a gold score difference meeting a minimum threshold are
+added to a min-heap that stores up to $\Xi$ pairs, effectively retaining
+the pairs with the highest score difference.
+In this case, the threshold is set to 0.05 \textsc{bleu}, following
+that presented in the original paper.
+These heaps are finally combined and used to fit the classifier.
+Although the original implementation tuned $\Gamma$ and $\Xi$ on the
+training data, such a process yielded no significant difference in
+\textsc{bleu} score on the development set for the values tested
+($\Gamma\in\{10,100,1000\}$ and $\Xi\in\{1,10,100\}$), and so the values
+$\Gamma=\Xi=100$ were arbitrarily selected.
+
+\begin{table}
+\center
+\begin{tabular}{lrr}\\
+\textbf{Method} &
+\textbf{Dev} &
+\textbf{Test} \\
+\hline
+All features (3)            & 28.23 & 28.11 \\
+With buggy gold scoring (4) & \textbf{28.93} & 28.37 \\
+No verb count (1)           & 28.71 & \textbf{28.45}
+\end{tabular}
+\caption{\label{tab:bleu}
+Mean \textsc{bleu} scores on development and testing data for
+different reranker settings.
+Numbers in parentheses indicate the number of runs averaged over.
+The best score for each data set is highlighted in bold.}
+\end{table}
+
+The performance of the reranker with various settings, as measured by
+the corpus \textsc{bleu} score, is shown in Table~\ref{tab:bleu}.
+For comparison, results on two non-final versions of the reranker are
+also shown.
+One does not implement the verb count feature.
+The other contains a buggy implementation of the gold score computed
+over the whole line of the hypothesis data file, including the source
+sentence \textsc{id} and probabilities, instead of only the actual text
+of the hypothesis.
+
+Curiously, the full-featured version shows the worst performance on both
+the development and testing sets.
+The unexpectedly high mean performance of the implementation without
+verb counts on the testing data may be explained by the fact that only
+one run was submitted for evaluation; the buggy-gold-score version has
+the best single-run performance at 28.69 \textsc{bleu}.
+In general, unfortunately, it is difficult to draw conclusive inferences
+on the value of each of the features tested from these results.
+This is due in part to the small size of the training set, which at
+only 400 sentences is unlikely to be large enough to yield feature
+weights that generalize well over unseen data.
+For such a small amount of data, a non-classifier-based method such as
+\textsc{mert} or \textsc{mira} may present a better approach.
+
+\begin{thebibliography}{1}
+
+\bibitem{Hopkins:2011}
+Mark Hopkins and Jonathan May.
+\newblock Tuning as ranking.
+\newblock In {\em Proceedings of the 2011 Conference on Empirical Methods in
+  Natural Language Processing}, pages 1352--1362, Edinburgh, Scotland, UK.,
+  July 2011. Association for Computational Linguistics.
+\newblock URL: \url{http://www.aclweb.org/anthology/D11-1125}.
+
+\bibitem{TextBlob}
+Steven Loria and contributors.
+\newblock {TextBlob}: simplified text processing.
+\newblock URL: \url{http://textblob.readthedocs.org/}.
+
+\end{thebibliography}
+
+\end{document}
