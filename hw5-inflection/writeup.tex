@@ -1,0 +1,113 @@
+\documentclass[11pt,twocolumn]{article}
+\usepackage{inconsolata}
+\usepackage{helvet}
+\usepackage[bitstream-charter]{mathdesign}
+\usepackage{microtype}
+\usepackage{titling}
+
+\usepackage{hyperref}
+
+\setlength{\droptitle}{-1in}
+\posttitle{\par\end{center}}
+
+\begin{document}
+\title{Homework 5: Inflection}
+\author{Roger Que}
+\date{2014--04--29}
+\maketitle
+
+This submission implements an inflector using bigram probabilities with
+Katz backoff to determine the best inflected form for each lemma, based
+on \textsc{nltk}'s $n$-gram model framework \cite{Bird:2009}.
+Two types of bigrams are used:
+\begin{itemize}
+\item
+Bigrams that decompose conventionally from left to right in sentence
+order, using both the lemma and the inflected form of the previous word
+as context.
+
+\item
+Bigrams that decompose over the dependency tree, using the lemma of each
+word's parent node as its context.
+\end{itemize}
+The probabilities of each, which are determined from the training data,
+are combined with a weighted sum to give the total probability of each
+inflected form, and the one with the highest probability is chosen.
+
+The relative weights of the two bigram features were tuned on the
+development data.
+Here, the notation $\lambda$ is used to represent the weight of the
+dependency bigram feature, implying a corresponding conventional bigram
+feature weight of $1-\lambda$.
+Values for $\lambda$ from 0.0 to 1.0, in increments of 0.1, were tested.
+This process yielded an optimal $\lambda^*$ of 0.2, which also achieved
+the highest performance on the testing set.
+
+Development and testing accuracy were strongly correlated across
+different values of $\lambda$, being within one percentage point of each
+other in all cases.
+For $\lambda=\lambda^*$, 64\% of judgments were correct;
+for $\lambda=0.0$, using only conventional bigrams, 63\%;
+and for $\lambda=1.0$, using only dependency tree bigrams, 62\%.
+From the data, it is clear that the dependency parse information
+provides a marginal aid in identification of the correct inflected form,
+but that in isolation it cannot discriminate between forms as well as
+conventional bigram information.
+Closer investigation of the results on development data show a high
+overlap in correct judgments between the $\lambda=0.0$ and $\lambda=1.0$
+settings, as shown in Table~\ref{tab:comparison}.
+
+\begin{table*}
+\center
+\begin{tabular}{l|rrrr|rr}
+&
+\multicolumn{2}{c}{\textbf{0.0 C}} &
+\multicolumn{2}{c|}{\textbf{0.0 I}} &
+\multicolumn{2}{c}{\textbf{Total}} \\
+\hline
+\textbf{1.0 C} &
+40,926 & \small 58\% &
+3,160 & \small 4\% &
+44,086 & \small 62\% \\
+\textbf{1.0 I} &
+3,692 & \small 5\% &
+23,196 & \small 33\% &
+26,888 & \small 38\% \\
+\hline
+\textbf{Total} &
+44,618 & \small 63\% &
+26,356 & \small 37\% &
+70,974 & \small 100\%
+\end{tabular}
+\caption{\label{tab:comparison}
+A comparison of the percentage of correct (C) and incorrect (I)
+judgments on development data for $\lambda$ values of 0.0 (conventional
+bigram features only) and 1.0 (dependency bigram features only).
+}
+\end{table*}
+
+The choice to use both the lemma and the inflected form of the previous
+word in the ``conventional'' bigram probabilities was motivated by ease
+of implementation, and not by any linguistic factors.
+The effect of this decision on performance ultimately depends on the
+presence or absence of a dependence on the previous inflected form,
+which was not tested.
+Should the dependence be merely on the lemma and not the inflected form,
+some incorrect judgments may have been rendered due to the splitting of
+the bigram probability mass across many different inflected forms.
+
+Further potential avenues for improvement include the use of a longer
+context for the existing models, as well as the incorporation of
+additional data from the dependency parse, such as edge labels, into the
+feature space.
+
+\begin{thebibliography}{1}
+
+\bibitem{Bird:2009}
+Steven Bird, Edward Loper, and Ewan Klein.
+\newblock {\em Natural Language Processing with Python}.
+\newblock O'Reilly Media Inc., 2009.
+
+\end{thebibliography}
+
+\end{document}
