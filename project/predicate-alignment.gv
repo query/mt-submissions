@@ -1,0 +1,56 @@
+graph G {
+    layout = "dot"
+    margin = 0
+    node [shape="circle"]
+
+    subgraph M {
+        rank = "same"
+        edge [style="invisible"]
+
+        "M:went" [label="1"]
+        "M:participate" [label="2"]
+        "M:come" [label="3"]
+        "M:tell" [label="4"]
+
+        "M:went" -- "M:participate"
+        "M:participate" -- "M:come"
+        "M:come" -- "M:tell"
+    }
+
+    subgraph R {
+        rank = "same"
+        edge [style="invisible"]
+
+        "R:arrived" [label="A"]
+        "R:taking" [label="B"]
+        "R:returned" [label="C"]
+        "R:yet" [label="D"]
+        "R:hear" [label="E"]
+
+        "R:arrived" -- "R:taking"
+        "R:taking" -- "R:returned"
+        "R:returned" -- "R:yet"
+        "R:yet" -- "R:hear"
+    }
+
+    "M:went" -- "R:arrived"
+    "M:went" -- "R:taking" [penwidth=5, color="black"]
+    "M:went" -- "R:returned"
+    "M:went" -- "R:yet"
+    "M:went" -- "R:hear"
+    "M:participate" -- "R:arrived" [penwidth=5, color="black"]
+    "M:participate" -- "R:taking"
+    "M:participate" -- "R:returned"
+    "M:participate" -- "R:yet"
+    "M:participate" -- "R:hear"
+    "M:come" -- "R:arrived"
+    "M:come" -- "R:taking"
+    "M:come" -- "R:returned"
+    "M:come" -- "R:yet" [penwidth=5, color="black"]
+    "M:come" -- "R:hear"
+    "M:tell" -- "R:arrived"
+    "M:tell" -- "R:taking"
+    "M:tell" -- "R:returned"
+    "M:tell" -- "R:yet"
+    "M:tell" -- "R:hear" [penwidth=5, color="black"]
+}
